@@ -1,8 +1,8 @@
 let table;
 let masterData = [];
 
-// Firma criptográfica SHA-256 de la contraseña "Secur-Proc-2026!*"
-const CLAVE_HASH_MAESTRA = "ca704ec37059dbdd0e4ad9b307bf949437ff866384a51e6b83f06ec14336c1e5";
+// Firma criptográfica SHA-256 de la contraseña "Consulta2026*"
+const CLAVE_HASH_MAESTRA = "d87f54c9faefb49bf0280eb212574e4bfd72e73307b399238380eb92df6d0932";
 
 $(document).ready(function() {
     // Solicitar credenciales al inicio de forma inmediata
