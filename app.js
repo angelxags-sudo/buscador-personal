@@ -2,7 +2,7 @@ let table;
 let masterData = [];
 
 // Firma criptográfica SHA-256 de la contraseña "Consulta2026*"
-const CLAVE_HASH_MAESTRA = "d87f54c9faefb49bf0280eb212574e4bfd72e73307b399238380eb92df6d0932";
+const CLAVE_HASH_MAESTRA = "29437cae16104fa28045618b7625078519fc77eb7826372132db0fe67e412586";
 
 $(document).ready(function() {
     // Solicitar credenciales al inicio de forma inmediata
