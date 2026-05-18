@@ -1,31 +1,9 @@
 let table;
 let masterData = [];
 
-// Firma criptográfica SHA-256 de la contraseña "Consulta2026*"
-const CLAVE_HASH_MAESTRA = "29437cae16104fa28045618b7625078519fc77eb7826372132db0fe67e412586";
-
 $(document).ready(function() {
-    // Solicitar credenciales al inicio de forma inmediata
-    let usuarioEntrada = prompt("Control de Acceso Interno\nIngrese Nombre de Usuario:");
-    let claveEntrada = prompt("Ingrese Contraseña de Seguridad:");
-
-    verificarAcceso(usuarioEntrada, claveEntrada).then(autorizado => {
-        if (autorizado) {
-            iniciarCargaDeDatos();
-        } else {
-            alert("Credenciales Inválidas. Acceso denegado.");
-            $('body').html('<div style="text-align:center; margin-top:150px; color:#ef4444; font-family:sans-serif;"><h2>🔒 Acceso Restringido</h2><p>Este sistema contiene información interna y requiere autorización.</p></div>');
-        }
-    });
-
-    async function verificarAcceso(user, pass) {
-        if (user !== "admin" || !pass) return false;
-        const msgBuffer = new TextEncoder().encode(pass);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        return hashHex === CLAVE_HASH_MAESTRA;
-    }
+    // Carga directa de datos sin pedir credenciales
+    iniciarCargaDeDatos();
 
     function iniciarCargaDeDatos() {
         fetch('datos.json')
@@ -36,8 +14,8 @@ $(document).ready(function() {
                 inicializarSistemaBuscador(masterData);
             })
             .catch(error => {
-                console.error("Base de datos no encontrada o vacía:", error);
-                $('#totalCounter').text("0 registros");
+                console.error("Base de datos vacía o no encontrada:", error);
+                $('#totalCounter').text("0 registros activos");
                 inicializarSistemaBuscador([]);
             });
     }
@@ -48,10 +26,9 @@ $(document).ready(function() {
             deferRender: true,
             pageLength: 15,
             lengthMenu: [10, 15, 30, 50, 100],
-            fixedHeader: true,
             order: [[0, 'asc']],
             dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6">>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
-            language: {
+            language: { 
                 url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json',
                 emptyTable: "Ningún registro coincide con los criterios ingresados."
             },
@@ -72,71 +49,55 @@ $(document).ready(function() {
 
         function ejecutarFiltrado() {
             let queryNombre = $('#searchName').val().toLowerCase().trim();
-            let queryCodigo = $('#searchCode').val().toLowerCase().trim();
+            let queryCode = $('#searchCode').val().toLowerCase().trim();
             let queryGrado  = $('#searchGrado').val().toLowerCase().trim();
-
-            if (queryNombre === "" && queryCodigo === "" && queryGrado === "") {
-                table.clear().rows.add(masterData).draw();
-                $('#totalCounter').text(masterData.length.toLocaleString() + ' registros totales');
-                return;
-            }
 
             let filtrados = masterData.filter(row => {
                 let txtNombre = (row["Apellidos y Nombres"] || row["Nombre"] || "").toLowerCase();
-                let txtCodigo = (row["Codigo Funcionario"] || row["Cod.Func."] || row["Cod. Func."] || "").toLowerCase();
+                let txtCode = (row["Codigo Funcionario"] || row["Cod.Func."] || "").toLowerCase();
                 let txtGrado  = (row["Grado"] || "").toLowerCase();
-                let txtEscalafon = (row["Escalafon"] || row["Escalafón"] || "").toLowerCase();
 
-                if (queryNombre !== "") {
-                    let terminos = queryNombre.split(" ");
-                    if (!terminos.every(t => txtNombre.includes(t))) return false;
-                }
-                if (queryCodigo !== "" && !txtCodigo.includes(queryCodigo)) return false;
-                if (queryGrado !== "" && !txtGrado.includes(queryGrado) && !txtEscalafon.includes(queryGrado)) return false;
+                if (queryNombre && !queryNombre.split(" ").every(t => txtNombre.includes(t))) return false;
+                if (queryCode && !txtCode.includes(queryCode)) return false;
+                if (queryGrado && !txtGrado.includes(queryGrado)) return false;
                 return true;
             });
-
             table.clear().rows.add(filtrados).draw();
-            $('#totalCounter').text(filtrados.length.toLocaleString() + ' coincidencias encontradas');
+            $('#totalCounter').text(filtrados.length.toLocaleString() + ' coincidencias');
         }
 
         $('#searchName, #searchCode, #searchGrado').on('input', ejecutarFiltrado);
         $('#resetFilters').on('click', function() {
-            $('#searchName').val(''); $('#searchCode').val(''); $('#searchGrado').val('');
+            $('#searchName, #searchCode, #searchGrado').val('');
             table.clear().rows.add(masterData).draw();
-            $('#totalCounter').text(masterData.length.toLocaleString() + ' registros totales');
         });
     }
 
-    // MÓDULO EXCEL EN MEMORIA
+    // Módulo de Actualización Excel
     const dropzone = $('#dropzone');
     const fileInput = $('#excelFileInput');
     dropzone.on('click', () => fileInput.click());
-    dropzone.on('dragover', (e) => { e.preventDefault(); dropzone.addClass('dragover'); });
-    dropzone.on('dragleave', () => dropzone.removeClass('dragover'));
+    dropzone.on('dragover', (e) => { e.preventDefault(); });
     dropzone.on('drop', (e) => {
-        e.preventDefault(); dropzone.removeClass('dragover');
-        const files = e.originalEvent.dataTransfer.files;
-        if (files.length > 0) processFile(files[0]);
+        e.preventDefault();
+        if (e.originalEvent.dataTransfer.files.length > 0) processFile(e.originalEvent.dataTransfer.files[0]);
     });
     fileInput.on('change', (e) => { if (e.target.files.length > 0) processFile(e.target.files[0]); });
 
     function processFile(file) {
         const reader = new FileReader();
-        $('#fileUploadStatus').removeClass('d-none alert-danger alert-success').addClass('alert-info').text("Analizando planilla...");
+        $('#fileUploadStatus').removeClass('d-none').addClass('alert-info').text("Procesando Excel...");
         reader.onload = function(e) {
             try {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
                 const parsedJson = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                if (parsedJson.length === 0) throw new Error("Vacío");
                 masterData = parsedJson;
                 table.clear().rows.add(masterData).draw();
-                $('#totalCounter').text(masterData.length.toLocaleString() + ' registros totales (Actualizado)');
-                $('#fileUploadStatus').removeClass('alert-info').addClass('alert-success').html(`<strong>¡Éxito!</strong> Se cargaron <strong>${masterData.length.toLocaleString()}</strong> filas.`);
+                $('#fileUploadStatus').removeClass('alert-info').addClass('alert-success').html(`¡Éxito! Cargadas ${masterData.length} filas.`);
                 $('#btnDownloadJson').removeClass('d-none');
             } catch (err) {
-                $('#fileUploadStatus').removeClass('alert-info').addClass('alert-danger').text("Error en la lectura del archivo.");
+                $('#fileUploadStatus').text("Error al procesar el archivo.");
             }
         };
         reader.readAsArrayBuffer(file);
